@@ -5,6 +5,7 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
+	"math"
 	"math/rand"
 	"os"
 	"time"
@@ -13,14 +14,27 @@ import (
 func main() {
 	inputDir := "dataset"
 	outputDir := "papaya"
+
+	datasetClasses := []string{"train", "validate", "test"}
+	numberDatasetClass := []int{70, 15, 15}
+	numberDatasetPerClass := 0
+
+	err := os.RemoveAll(outputDir)
+	if err != nil {
+		log.Fatalln("Unable to cleanup output dir", err)
+	}
+
 	dataClasses, err := ioutil.ReadDir(inputDir)
 	if err != nil {
 		log.Fatalln("Unable to read dir in inputDir", err)
 	}
-
-	datasetClasses := []string{"train", "validate", "test"}
-	numberDatasetClass := []int{70, 15, 15}
-	numberDatasetPerClass := 200
+	// Balance or not
+	numberPerClass, min := findNumberPerClass(dataClasses, inputDir)
+	for i, num := range numberPerClass {
+		fmt.Printf("%s: %d\n", dataClasses[i].Name(), num)
+	}
+	fmt.Printf("The dataset will be balance to %d data per class", min)
+	numberDatasetPerClass = min
 
 	for _, dataClass := range dataClasses {
 		if !dataClass.IsDir() {
@@ -83,4 +97,24 @@ func copy(src, dst string) (int64, error) {
 	defer destination.Close()
 	nBytes, err := io.Copy(destination, source)
 	return nBytes, err
+}
+
+func findNumberPerClass(classes []os.FileInfo, inputDir string) ([]int, int) {
+	min := math.MaxInt32
+	var count []int
+	for _, class := range classes {
+		if !class.IsDir() {
+			continue
+		}
+		fileList, err := ioutil.ReadDir(fmt.Sprintf("%s/%s", inputDir, class.Name()))
+		if err != nil {
+			log.Fatalln("Unable to read dir", class.Name(), err)
+		}
+		numberOfFiles := len(fileList)
+		if numberOfFiles < min {
+			min = numberOfFiles
+		}
+		count = append(count, numberOfFiles)
+	}
+	return count, min
 }
