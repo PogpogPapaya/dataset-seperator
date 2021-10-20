@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"math/rand"
 	"os"
@@ -12,7 +13,7 @@ import (
 func main() {
 	inputDir := "dataset"
 	outputDir := "papaya"
-	dataClasses, err := os.ReadDir(inputDir)
+	dataClasses, err := ioutil.ReadDir(inputDir)
 	if err != nil {
 		log.Fatalln("Unable to read dir in inputDir", err)
 	}
@@ -22,7 +23,10 @@ func main() {
 	numberDatasetPerClass := 200
 
 	for _, dataClass := range dataClasses {
-		fileLists, err := os.ReadDir(fmt.Sprintf("%s/%s", inputDir, dataClass.Name()))
+		if !dataClass.IsDir() {
+			continue
+		}
+		fileLists, err := ioutil.ReadDir(fmt.Sprintf("%s/%s", inputDir, dataClass.Name()))
 		if err != nil {
 			log.Fatalln("Unable to read files in ", dataClass.Name(), err)
 		}
@@ -36,14 +40,16 @@ func main() {
 			if err := os.MkdirAll(destDir, os.ModePerm); err != nil {
 				log.Fatalln("Unable to create class dir", datasetClass, err)
 			}
-			for i := 0; i<numberDatasetClass[j] * numberDatasetPerClass / 100; i++ {
-				fileName := fileLists[randomInt(numberOfFiles)].Name()
-				inputFile := fmt.Sprintf("%s/%s/%s", inputDir, dataClass.Name(),fileName)
-				outputFile := fmt.Sprintf("%s/%s", destDir, fileName)
+			for i := 0; i < numberDatasetClass[j]*numberDatasetPerClass/100; i++ {
+				fileIndex := randomInt(numberOfFiles)
+				inputFile := fmt.Sprintf("%s/%s/%s", inputDir, dataClass.Name(), fileLists[fileIndex].Name())
+				outputFile := fmt.Sprintf("%s/%s", destDir, fileLists[fileIndex].Name())
 				_, err = copy(inputFile, outputFile)
 				if err != nil {
 					log.Fatalln("Unable to copy file", inputFile, err)
 				}
+				fileLists = append(fileLists[:fileIndex], fileLists[fileIndex+1:]...)
+				numberOfFiles = len(fileLists)
 			}
 		}
 	}
